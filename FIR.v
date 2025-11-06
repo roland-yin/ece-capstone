@@ -70,7 +70,7 @@ module fir #(
                 end
 
                 if (deltaA_valid && proc_idx != 0) begin
-                    w_reg[proc_idx-1] <= w_reg[proc_idx-1] + ($signed(deltaA) >>> FRAC);
+                    w_reg[proc_idx-1] <= w_reg[proc_idx-1] + ($signed(deltaA[31:0]));
                 end
 
                 // ---- MAC B: output computation ----
@@ -84,7 +84,7 @@ module fir #(
 
 
                 if (prodB_valid) begin
-                    acc <= acc + ($signed(prodB) >>> FRAC);
+                    acc <= acc + ($signed(prodB[31:0]) );
                 end
 
                 // increment index

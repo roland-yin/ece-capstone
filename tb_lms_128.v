@@ -13,7 +13,10 @@ module tb_lms_top;
     wire signed [31:0] out_sample;
     wire out_valid;
 
-    parameter CLK_PERIOD = 10;
+    parameter CLK_PERIOD = 10; // 100 MHz clock
+    parameter real FREQ_HZ = 1.0e3; // 1 kHz low frequency
+    parameter real CLK_FREQ = 1.0e8; // 100 MHz
+    parameter real TWO_PI = 6.28318530718;
 
     // Clock generation
     initial clk = 0;
@@ -34,15 +37,18 @@ module tb_lms_top;
 
     // Testbench stimulus
     integer i;
-    reg [7:0] cycle_count;
-
+    reg [15:0] cycle_count;
+    real phase;
+    integer k =1 ;
     initial begin
         rst_n = 0;
+        valid = 0;
         error_in = 0;
         feedforward_in = 0;
         desired_in = 0;
-        u_in = 16'sd16384; // example step size in Q1.15
+        u_in = 1; // step size Q1.15 format
         cycle_count = 0;
+        phase = 0.0;
 
         #50;
         rst_n = 1;
@@ -52,15 +58,14 @@ module tb_lms_top;
             cycle_count = cycle_count + 1;
 
             if (cycle_count == 200) begin
-                // Feed a new input every 200 cycles
-                error_in = $random % 100 - 50;
-                valid=1;
-                feedforward_in = $random % 100 - 50;
-                desired_in = $random % 100 - 50;
-                cycle_count = 0; // reset counter
+                valid = 1;
+                error_in = 1;
+                feedforward_in = 1;
+                desired_in = 0;
+                cycle_count = 0;
             end else begin
+                valid = 0;
                 error_in = 0;
-                valid=0;
                 feedforward_in = 0;
                 desired_in = 0;
             end
@@ -71,15 +76,19 @@ module tb_lms_top;
         $stop;
     end
 
-    // Optional: monitor outputs
+    // VCD dump for waveform
     initial begin
         $dumpfile("lms_tb.vcd");
         $dumpvars(0, tb_lms_top);
+        for (i = 0; i < 128; i = i + 1)
+            $dumpvars(0, tb_lms_top.dut.fir_inst.w_reg[i]);
+            $dumpvars(0, tb_lms_top.dut.fir_inst.x_reg[i]);
     end
 
+    // Display output when valid
     always @(posedge clk) begin
         if (out_valid) begin
-            $display("Time %0t: out_sample = %d", $time, out_sample);
+            $display("Time %0t: out_sample = %d", $time, out_sample,error_in);
         end
     end
 

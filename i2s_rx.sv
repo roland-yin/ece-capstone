@@ -6,7 +6,7 @@
  * Notes:
  * clk freq (~100MHz) >> sck freq (~3MHz)
  * only uses right channel of ICS-43432
- * dout_vld is only high for one clk cycle after 16 bits are received
+ * simple valid/ready handshaking
  * 
  * 
 */
@@ -19,7 +19,8 @@ module i2s_rx
     input   sd,         // data
 
     output  [ 15 : 0 ]  dout,
-    output              dout_vld
+    output              dout_vld,
+    input               dout_rdy
 );
 
 // -----------------------------------------------------------------------------
@@ -93,14 +94,14 @@ always @( posedge clk or negedge rst_n )
     end
 
 // -----------------------------------------------------------------------------
-// dout_vld pulse
+// handshake
 always @( posedge clk or negedge rst_n )
     if ( ~rst_n )
         dout_vld    <= 0;
-    else
-    begin
-        dout_vld    <= ( rise_sck & (cnt == 17) ) ? 1 : 0;
-    end
+    else if ( dout_vld & dout_rdy )
+        dout_vld    <= 0;
+    else if ( rise_sck & (cnt == 17) )
+        dout_vld    <= 1;
 
 
 endmodule

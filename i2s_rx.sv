@@ -18,8 +18,8 @@ module i2s_rx
     input   sck,        // serial clock
     input   sd,         // data
 
-    output  [ 15 : 0 ]  dout,
-    output              dout_vld,
+    output  reg [15:0]  dout,
+    output  reg         dout_vld,
     input               dout_rdy
 );
 
@@ -100,7 +100,7 @@ always @( posedge clk or negedge rst_n )
         dout_vld    <= 0;
     else if ( dout_vld & dout_rdy )
         dout_vld    <= 0;
-    else if ( rise_sck & (cnt == 17) )
+    else if ( ws & rise_sck & (cnt == 17) )
         dout_vld    <= 1;
 
 

@@ -1,5 +1,5 @@
 module fir #(
-    parameter TAPS = 128,
+    parameter TAPS = 128
 )(
     input  wire                 clk,
     input  wire                 rst_n,
@@ -18,14 +18,14 @@ module fir #(
     // Addition saturation (w+x*weight_adjust)
     wire signed [16:0] sat_in;
     wire signed [15:0] sat_out;
-    assign sat_in = (mult_A_prod>>>15)[16:0] - {w_reg[proc_idx-2][15], w_reg[proc_idx-2]};
+    assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
     saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
 
     // Accumulator output saturation (a+accum)
-    wire signed [32:0] sat_a_in;
-    wire signed [31:0] sat_a_out;
-    assign sat_a_in = (acc>>>7)[32:0];
-    saturate #(33,32) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
+    wire signed [16:0] sat_a_in;
+    wire signed [15:0] sat_a_out;
+    assign sat_a_in = acc[31:15];
+    saturate #(17,16) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
     
     // MAC pipeline registers
     reg signed [31:0] mult_A_prod;

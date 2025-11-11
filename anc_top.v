@@ -58,7 +58,7 @@ fir #(
     .x_in(x_controller),
     .a_in(a_controller),
     .weight_adjust(weight_adjust_controller),
-    .go(fir_go),
+    .fir_go(fir_go),
     .out_sample(out_sample),
     .out_valid(out_valid),
     .done(fir_done)

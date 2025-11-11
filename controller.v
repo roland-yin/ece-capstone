@@ -11,7 +11,7 @@ module controller (
     input  wire signed [15:0]   u_in,               // step-size
 
     input  wire                 fir_done,           // FIR done signal
-    output reg                  fir_go              // FIR go signal 
+    output reg                  fir_go,              // FIR go signal 
    
     input  wire signed [15:0]   fir_out,            // FIR output
 
@@ -41,8 +41,6 @@ module controller (
             state <= S_IDLE;
             x_out <= 16'sd0;
             weight_adjust <= 16'sd0;
-            out_sample <= 16'sd0;
-            out_valid <= 1'b0;
             fir_go <= 1'b0;
             controller_ready <= 1'b0;
             e_buf <= 16'sd0;
@@ -50,8 +48,7 @@ module controller (
             a_buf <= 16'sd0;
             u_buf <= 16'sd0;
         end else begin
-            // Defaults
-            out_valid <= 1'b0;       
+            // Defaults     
             fir_go <= 1'b0;          
             controller_ready <= 1'b0;
 
@@ -73,6 +70,7 @@ module controller (
                     // Load multiplier inputs
                     mult_a <= sat_out;  // Saturated output of (e-a)
                     mult_b <= u_buf;
+                    state <= S_PIPE;
                 end
 
                 S_PIPE: begin

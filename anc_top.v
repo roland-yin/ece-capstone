@@ -21,7 +21,6 @@ parameter TAPS = 128;
 wire signed [15:0] x_controller;        // samples held by controller
 wire signed [15:0] a_controller;
 wire signed [15:0] weight_adjust_controller;
-wire               controller_ready;
 wire signed [15:0] fir_out;
 wire               fir_done;
 wire               fir_go;

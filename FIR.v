@@ -12,21 +12,12 @@ module fir #(
     output reg                  done                // signals FIR completion to controller
 );
 
+    // Accumulator register
+    reg signed [39:0] acc;      // 7+32+1 (128 of 32 bit values + a_in)
+
     reg signed [15:0] w_reg [0:TAPS-1];
     reg signed [15:0] x_reg [0:TAPS-1];
 
-    // Addition saturation (w+x*weight_adjust)
-    wire signed [16:0] sat_in;
-    wire signed [15:0] sat_out;
-    assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
-    saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
-
-    // Accumulator output saturation (a+accum)
-    wire signed [16:0] sat_a_in;
-    wire signed [15:0] sat_a_out;
-    assign sat_a_in = acc[31:15];
-    saturate #(17,16) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
-    
     // MAC pipeline registers
     reg signed [31:0] mult_A_prod;
     reg               mult_A_prod_valid;
@@ -37,6 +28,22 @@ module fir #(
     reg               x_reg_read_valid;     // pipeline reg for output of register read-out mux
     reg               w_reg_read_valid;
 
+
+    // Process counter
+    reg        [7:0]  proc_idx;
+
+    // Addition saturation (w+x*weight_adjust)
+    wire signed [16:0] sat_in;
+    wire signed [15:0] sat_out;
+    assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
+    saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
+
+    // Accumulator output saturation (a+accum)
+    wire signed [24:0] sat_a_in;
+    wire signed [15:0] sat_a_out;
+    assign sat_a_in = acc[39:15];
+    saturate #(25,16) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
+    
     // Multiplier modules and pipeline registers
     reg  signed [15:0] mult_A_a, mult_A_b;
     wire signed [31:0] mult_A_p;
@@ -45,12 +52,6 @@ module fir #(
     reg  signed [15:0] mult_B_a, mult_B_b;
     wire signed [31:0] mult_B_p;
     bw_mult bw_mult_B (.a(mult_B_a), .b(mult_B_b), .p(mult_B_p));
-
-    // Accumulator register
-    reg signed [39:0] acc;      // 7+32+1 (128 of 32 bit values + a_in)
-
-    // Process counter
-    reg        [7:0]  proc_idx;
 
     reg fir_active;
     integer i;

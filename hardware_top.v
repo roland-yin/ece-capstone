@@ -20,7 +20,11 @@ module hardware_top (
 	// LMS step size input
 	input wire ws_u,
 	input wire sck_u,
-	input wire sd_u
+	input wire sd_u,
+
+	// Outputs (simulation purposes for now)
+	output wire signed [15:0] out_sample,	// FIR filter output
+	output wire               out_valid	    // output valid signal
 );
 
 wire signed [15:0] e_in;
@@ -51,8 +55,8 @@ vr_merge #(4) vr_merge_inst (
 	.i_ready(controller_ready)
 );
 
-wire signed [15:0] out_sample;	// FIR filter output
-wire               out_valid;	// output valid signal
+// wire signed [15:0] out_sample;	// FIR filter output
+// wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
 	.clk(clk),

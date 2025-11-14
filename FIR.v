@@ -18,14 +18,14 @@ module fir #(
     // Addition saturation (w+x*weight_adjust)
     wire signed [16:0] sat_in;
     wire signed [15:0] sat_out;
-    assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
+    assign sat_in = $signed((mult_A_prod[31:15] >>> 3)) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});  // q1.15 + q4.12 (with 1 bit sign extension)
     saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
 
     // Accumulator output saturation (a+accum)
-    wire signed [16:0] sat_a_in;
+    wire signed [27:0] sat_a_in;
     wire signed [15:0] sat_a_out;
-    assign sat_a_in = acc[31:15];
-    saturate #(17,16) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
+    assign sat_a_in = acc[39:12];       // accum is q12.27 (q13.27 for pre-adding a[n]) and clipping/trunc to q1.15
+    saturate #(28,16) saturate_a_inst (.in(sat_a_in), .out(sat_a_out));
     
     // MAC pipeline registers
     reg signed [31:0] mult_A_prod;
@@ -80,7 +80,7 @@ module fir #(
 
             if (fir_go && !fir_active) begin
                 fir_active <= 1'b1;
-                acc <= a_in;        // initialize accumulator with a_in
+                acc <= a_in <<< 12;        // initialize accumulator with a_in (accum q12.27, a_in q1.15)
                 proc_idx <= 0;
                 mult_A_a <= weight_adjust;
 

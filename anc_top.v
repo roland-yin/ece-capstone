@@ -13,7 +13,7 @@ module anc_top (
     output wire               out_valid     // output valid signal
 );
 
-parameter TAPS = 128;
+parameter TAPS = 256;
 
 // ------------------------
 // Internal wires

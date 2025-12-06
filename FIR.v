@@ -1,7 +1,7 @@
 module fir #(
     parameter TAPS = 256,
     parameter M = 8         // for register sizing based on TAPS = 2^M
-)(
+) (
     input  wire                 clk,
     input  wire                 rst_n,
     input  wire signed [15:0]   x_in,               // input from controller
@@ -86,7 +86,7 @@ module fir #(
 
             if (fir_go && !fir_active) begin
                 fir_active <= 1'b1;
-                acc <= a_in;        // initialize accumulator with a_in
+                acc <= a_in <<< 15;        // initialize accumulator with a_in
                 proc_idx <= {(M+1){1'b0}};
                 mult_A_a <= weight_adjust;
 

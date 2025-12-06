@@ -1,7 +1,7 @@
 module fir #(
     parameter TAPS = 256,
     parameter M = 8         // for register sizing based on TAPS = 2^M
-)(
+) (
     input  wire                 clk,
     input  wire                 rst_n,
     input  wire signed [15:0]   x_in,               // input from controller
@@ -16,7 +16,7 @@ module fir #(
     // Accumulator register
     reg signed [M+32:0] acc;      // 7+32+1 (128 of 32 bit values + a_in)
 
-    reg signed [15:0] w_reg [0:TAPS-1];
+    reg signed [25:0] w_reg [0:TAPS-1];
     reg signed [15:0] x_reg [0:TAPS-1];
 
     // MAC pipeline registers
@@ -34,10 +34,14 @@ module fir #(
     reg        [M:0]  proc_idx;
 
     // Addition saturation (w+x*weight_adjust)
-    wire signed [16:0] sat_in;
-    wire signed [15:0] sat_out;
-    assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
-    saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
+    // wire signed [16:0] sat_in;
+    // wire signed [15:0] sat_out;
+    // assign sat_in = $signed(mult_A_prod[31:15]) + $signed({w_reg[proc_idx-2][15], w_reg[proc_idx-2]});
+    // saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
+    wire signed [26:0] sat_in;
+    wire signed [25:0] sat_out;
+    assign sat_in = $signed({{10{mult_A_prod[31]}}, mult_A_prod[30:15]}) + $signed({w_reg[proc_idx-2][25], w_reg[proc_idx-2]});
+    saturate #(27,26) saturate_inst (.in(sat_in), .out(sat_out));
 
     // Accumulator output saturation (a+accum)
     wire signed [M+32-15:0] sat_a_in;
@@ -82,7 +86,7 @@ module fir #(
 
             if (fir_go && !fir_active) begin
                 fir_active <= 1'b1;
-                acc <= a_in;        // initialize accumulator with a_in
+                acc <= a_in <<< 15;        // initialize accumulator with a_in
                 proc_idx <= {(M+1){1'b0}};
                 mult_A_a <= weight_adjust;
 
@@ -119,7 +123,7 @@ module fir #(
 
                 // ---- MAC B: output computation ----
                 if (weight_valid) begin
-                    mult_B_a <= w_reg[proc_idx-3];  // pipeline reg for multiplier input (after register read-out mux)
+                    mult_B_a <= w_reg[proc_idx-3][25:10];  // pipeline reg for multiplier input (after register read-out mux)
                     mult_B_b <= x_reg[proc_idx-3];
                     w_reg_read_valid <= 1'b1;
                 end else begin

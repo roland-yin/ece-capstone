@@ -23,13 +23,25 @@ module controller (
     // Subtraction saturation (e-a)
     wire signed [16:0] sat_in;
     wire signed [15:0] sat_out;
-    assign sat_in = {a_buf[15], a_buf} - {e_buf[15], e_buf};
+    assign sat_in = {a_delay[15], a_delay} - {e_buf[15], e_buf};    // uses delayed a
     saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
 
     // Multiplier module
     reg signed [15:0] mult_a, mult_b;
     wire signed [31:0] mult_p;
     bw_mult bw_mult_weight_adjust (.a(mult_a), .b(mult_b), .p(mult_p));
+
+    // Programmable delay for a
+    localparam prog_delay_N = 4;                                // sel width for prog_delay
+    localparam integer prog_delay_L = (1 << prog_delay_N);      // Length of the shift register
+    wire signed [15:0] a_delay;
+    prog_delay #(prog_delay_N, prog_delay_L) prog_delay_inst (
+        .clk(in_valid),     // important (should be at main sample rate 48khz)
+        .rst_n(rst_n),
+        .a_in(a_buf),
+        .a_out(a_delay),
+        .sel(9));   // delay of 10 at 48khz (208us)
+
 
     localparam S_IDLE = 2'd0, S_START = 2'd1, S_PIPE = 2'd2, S_RUN = 2'd3;
     reg [1:0] state;
@@ -66,7 +78,7 @@ module controller (
                 end
                 S_START: begin
                     // Load multiplier inputs
-                    mult_a <= sat_out;  // Saturated output of (e-a)
+                    mult_a <= sat_out;  // Saturated output of (e-a_delay)
                     mult_b <= u_buf;
                     state <= S_PIPE;
                 end

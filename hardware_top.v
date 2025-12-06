@@ -24,7 +24,10 @@ module hardware_top (
 
 	// Outputs (simulation purposes for now)
 	output wire signed [15:0] out_sample,	// FIR filter output
-	output wire               out_valid	    // output valid signal
+	output wire               out_valid,    // output valid signal
+
+	// Initialization bits (serially shifted in on reset)
+	input wire init_in
 );
 
 wire signed [15:0] e_in;
@@ -55,12 +58,41 @@ vr_merge #(4) vr_merge_inst (
 	.i_ready(controller_ready)
 );
 
+// Initialization Sequence: Shifting in Initialization Bits
+localparam init_len = 22;	// *Need to change counter length too, also see google sheets on current def
+reg [init_len-1:0] init_bits;
+reg [4:0] init_cnt;
+wire [7:0] i2s_in_clk_period, i2s_out_clk_period;
+wire bypass_mode_sel;
+wire [4:0] prog_delay_sel;
+
+assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} = init_bits;
+
+always @ (posedge clk, negedge rst_n) begin
+	if (!rst_n) begin
+		init_bits <= '0;
+		init_cnt <= '0;
+	end else if (!init_done) begin
+		init_bits <= {init_in, init_bits[init_len-1:1]};
+
+		if (init_cnt == init_len-1) begin
+			init_done <= 1'b1;
+		end else begin
+			init_cnt <= init_cnt + 1;
+		end
+	end
+end
+
+
 // wire signed [15:0] out_sample;	// FIR filter output
 // wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
 	.clk(clk),
 	.rst_n(rst_n),
+	.init_done(init_done),
+	.prog_delay_sel(prog_delay_sel),
+	.bypass_mode_sel(bypass_mode_sel),
 	.in_valid(data_valid),
 	.controller_ready(controller_ready),
 	.u_in(u_in),

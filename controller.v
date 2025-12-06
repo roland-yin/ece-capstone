@@ -2,6 +2,10 @@ module controller (
     input  wire                 clk,
     input  wire                 rst_n,
 
+    input  wire                 init_done,            // initialization bits
+    input  wire        [4:0]    prog_delay_sel,
+    input  wire                 bypass_mode_sel,
+
     input  wire                 in_valid,           // from vr_merge
     output reg                  controller_ready,   // controller ready for vr_merge
 
@@ -20,6 +24,17 @@ module controller (
     // Buffered inputs (held for algorithmic cycle)
     reg signed [15:0] e_buf, x_buf, a_buf, u_buf;
 
+    // Programmable delay for a
+    localparam prog_delay_N = 5;                                // sel width for prog_delay
+    localparam integer prog_delay_L = (1 << prog_delay_N);      // Length of the shift register
+    wire signed [15:0] a_delay;
+    prog_delay #(prog_delay_N, prog_delay_L) prog_delay_inst (
+        .clk(in_valid),     // important (should be at main sample rate 48khz)
+        .rst_n(rst_n),
+        .a_in(a_buf),
+        .a_out(a_delay),
+        .sel(0));   // delay of D+1 samples at 48khz ((D+1)*20.8us)
+
     // Subtraction saturation (e-a)
     wire signed [16:0] sat_in;
     wire signed [15:0] sat_out;
@@ -31,24 +46,12 @@ module controller (
     wire signed [31:0] mult_p;
     bw_mult bw_mult_weight_adjust (.a(mult_a), .b(mult_b), .p(mult_p));
 
-    // Programmable delay for a
-    localparam prog_delay_N = 4;                                // sel width for prog_delay
-    localparam integer prog_delay_L = (1 << prog_delay_N);      // Length of the shift register
-    wire signed [15:0] a_delay;
-    prog_delay #(prog_delay_N, prog_delay_L) prog_delay_inst (
-        .clk(in_valid),     // important (should be at main sample rate 48khz)
-        .rst_n(rst_n),
-        .a_in(a_buf),
-        .a_out(a_delay),
-        .sel(9));   // delay of 10 at 48khz (208us)
-
-
-    localparam S_IDLE = 2'd0, S_START = 2'd1, S_PIPE = 2'd2, S_RUN = 2'd3;
-    reg [1:0] state;
+    localparam S_INIT = 3'd0, S_IDLE = 3'd1, S_START = 3'd2, S_PIPE = 3'd3, S_RUN = 3'd4;
+    reg [2:0] state;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state <= S_IDLE;
+            state <= S_INIT;
             x_out <= 16'sd0;
             weight_adjust <= 16'sd0;
             fir_go <= 1'b0;
@@ -64,6 +67,10 @@ module controller (
 
             // FSM
             case (state)
+                S_INIT: begin
+                    state <= init_done ? S_IDLE : S_INIT;
+                end
+
                 S_IDLE: begin
                     controller_ready <= 1'b1;
                     if (in_valid) begin
@@ -76,6 +83,7 @@ module controller (
                         state <= S_START;
                     end
                 end
+
                 S_START: begin
                     // Load multiplier inputs
                     mult_a <= sat_out;  // Saturated output of (e-a_delay)

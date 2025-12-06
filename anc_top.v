@@ -2,6 +2,10 @@ module anc_top (
     input  wire               clk,
     input  wire               rst_n,
 
+    input  wire               init_done,
+    input  wire        [4:0]  prog_delay_sel,
+    input  wire               bypass_mode_sel,
+    
     input  wire               in_valid,           // new input sample valid
     output wire               controller_ready,   // controller ready for vr_merge
 
@@ -13,8 +17,8 @@ module anc_top (
     output wire               out_valid     // output valid signal
 );
 
-parameter TAPS = 512;
-parameter M = 9;        // for register sizing based on TAPS = 2^M
+parameter TAPS = 256;
+parameter M = 8;        // for register sizing based on TAPS = 2^M
 
 // ------------------------
 // Internal wires
@@ -33,6 +37,9 @@ wire               fir_go;
 controller controller_inst (
     .clk(clk),
     .rst_n(rst_n),
+    .init_done(init_done),
+    .prog_delay_sel(prog_delay_sel),
+    .bypass_mode_sel(bypass_mode_sel),
     .in_valid(in_valid),
     .controller_ready(controller_ready),
     .e_in(e_in),

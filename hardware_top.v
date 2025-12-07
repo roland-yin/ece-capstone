@@ -22,8 +22,12 @@ module hardware_top (
 	// Initialization bits (serially shifted in on reset)
 	input wire init_in,
     
-        // FPGA bypass
-        input       signed  [25:0]  weight_inject
+    // FPGA bypass
+    input wire signed [25:0] weight_inject,
+
+	// Scan enable and out
+	input  wire scan_en,
+	output wire scan_out
 );
 
 wire signed [15:0] e_in;
@@ -79,13 +83,14 @@ always @ (posedge clk, negedge rst_n) begin
 	end
 end
 
-
 // wire signed [15:0] out_sample;	// FIR filter output
 // wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
 	.clk(clk),
 	.rst_n(rst_n),
+	.scan_en(scan_en),
+	.scan_out(scan_out),
 	.init_done(init_done),
 	.prog_delay_sel(prog_delay_sel),
 	.bypass_mode_sel(bypass_mode_sel),
@@ -97,7 +102,7 @@ anc_top anc_top_inst (
 	.a_in(a_in),
 	.out_sample(out_sample),
 	.out_valid(out_valid),
-        .weight_inject  ( weight_inject )
+    .weight_inject  ( weight_inject )
 );
 
 i2s_tx i2s_tx_inst (

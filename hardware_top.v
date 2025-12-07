@@ -2,17 +2,17 @@ module hardware_top (
 	input wire clk,
 	input wire rst_n,
 
-	input wire ws,
-	input wire sck,
+	output wire ws,
+	output wire sck,
 
 	// Error mic
-	output wire sd_e,
+	input wire sd_e,
 	// Reference mic
-	output wire sd_x,
+	input wire sd_x,
 	// Audio input
-	output wire sd_a,
+	input wire sd_a,
 	// LMS step size input
-	output wire sd_u,
+	input wire sd_u,
 
 	//OUT TO DAC
 	output wire ws_out,

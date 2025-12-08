@@ -19,6 +19,8 @@ module hardware_top (
 	output wire sck_out,
 	output wire sd_out,
 
+	output wire fir_go,
+
 	// Initialization bits (serially shifted in on reset)
 	input wire init_in,
     
@@ -58,6 +60,7 @@ vr_merge #(4) vr_merge_inst (
 localparam init_len = 22;	// *Need to change counter length too, also see google sheets on current def
 reg [init_len-1:0] init_bits;
 reg [4:0] init_cnt;
+reg init_done;
 wire [7:0] i2s_in_clk_period, i2s_out_clk_period;
 wire bypass_mode_sel;
 wire [4:0] prog_delay_sel;
@@ -66,8 +69,9 @@ assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} 
 
 always @ (posedge clk, negedge rst_n) begin
 	if (!rst_n) begin
-		init_bits <= '0;
-		init_cnt <= '0;
+		init_bits <= 0;
+		init_cnt <= 0;
+		init_done <=0;
 	end else if (!init_done) begin
 		init_bits <= {init_in, init_bits[init_len-1:1]};
 
@@ -80,7 +84,7 @@ always @ (posedge clk, negedge rst_n) begin
 end
 
 
-// wire signed [15:0] out_sample;	// FIR filter output
+ wire signed [15:0] out_sample;	// FIR filter output
 // wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
@@ -97,6 +101,7 @@ anc_top anc_top_inst (
 	.a_in(a_in),
 	.out_sample(out_sample),
 	.out_valid(out_valid),
+		.fir_go(fir_go),
         .weight_inject  ( weight_inject )
 );
 

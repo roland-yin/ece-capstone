@@ -15,6 +15,7 @@ module anc_top (
     input  wire signed [15:0] u_in,         // LMS step size (learning rate)
     output wire signed [15:0] out_sample,   // FIR filter output
     output wire               out_valid,    // output valid signal
+    output wire fir_go,
     
     input       signed  [25:0]  weight_inject
 );
@@ -30,7 +31,7 @@ wire signed [15:0] a_controller;
 wire signed [15:0] weight_adjust_controller;
 wire signed [15:0] fir_out;
 wire               fir_done;
-wire               fir_go;
+
 
 
 // ------------------------

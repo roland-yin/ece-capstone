@@ -19,15 +19,18 @@ module hardware_top (
 	output wire sck_out,
 	output wire sd_out,
 
+	output wire fir_act,
+
 	// Initialization bits (serially shifted in on reset)
 	input wire init_in,
     
-    // FPGA bypass
-    input wire signed [25:0] weight_inject,
+  // FPGA bypass
+  input wire signed [25:0] weight_inject,
+  input wire bypass_ready,
 
-	// Scan enable and out
-	input  wire scan_en,
-	output wire scan_out
+  // Scan enable and out
+  input  wire scan_en,
+  output wire scan_out
 );
 
 wire signed [15:0] e_in;
@@ -40,6 +43,7 @@ wire x_vld, x_rdy;
 wire a_vld, a_rdy;
 wire u_vld, u_rdy;
 
+// i2s interfaces
 i2s_rx i2s_rx_e (.clk(clk), .rst_n(rst_n), .ws(ws), .sck(sck), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
 i2s_rx i2s_rx_x (.clk(clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
 i2s_rx i2s_rx_a (.clk(clk), .rst_n(rst_n), .sd(sd_a), .dout(a_in), .dout_vld(a_vld), .dout_rdy(a_rdy), .sck_period(i2s_in_clk_period));
@@ -62,6 +66,7 @@ vr_merge #(4) vr_merge_inst (
 localparam init_len = 22;	// *Need to change counter length too, also see google sheets on current def
 reg [init_len-1:0] init_bits;
 reg [4:0] init_cnt;
+reg init_done;
 wire [7:0] i2s_in_clk_period, i2s_out_clk_period;
 wire bypass_mode_sel;
 wire [4:0] prog_delay_sel;
@@ -70,8 +75,9 @@ assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} 
 
 always @ (posedge clk, negedge rst_n) begin
 	if (!rst_n) begin
-		init_bits <= '0;
-		init_cnt <= '0;
+		init_bits <= 0;
+		init_cnt <= 0;
+		init_done <=0;
 	end else if (!init_done) begin
 		init_bits <= {init_in, init_bits[init_len-1:1]};
 
@@ -83,7 +89,7 @@ always @ (posedge clk, negedge rst_n) begin
 	end
 end
 
-// wire signed [15:0] out_sample;	// FIR filter output
+ wire signed [15:0] out_sample;	// FIR filter output
 // wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
@@ -102,7 +108,9 @@ anc_top anc_top_inst (
 	.a_in(a_in),
 	.out_sample(out_sample),
 	.out_valid(out_valid),
-    .weight_inject  ( weight_inject )
+  .weight_inject(weight_inject),
+  .bypass_ready(bypass_ready),
+  .fir_act(fir_act)
 );
 
 i2s_tx i2s_tx_inst (

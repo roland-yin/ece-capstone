@@ -4,6 +4,10 @@ module fir #(
 ) (
     input  wire                 clk,
     input  wire                 rst_n,
+
+    input  wire                 scan_en,
+    output wire                 scan_out,
+
     input  wire signed [15:0]   x_in,               // input from controller
     input  wire signed [15:0]   a_in,               // input from controller
     input  wire signed [15:0]   weight_adjust,      // weight update from controller
@@ -34,6 +38,10 @@ module fir #(
     reg               x_reg_read_valid;     // pipeline reg for output of register read-out mux
     reg               w_reg_read_valid;
 
+    // Scan_out counter
+    reg [4:0] scan_cnt;
+    reg [25:0] scan_shreg;
+    assign scan_out = scan_shreg[0];
 
     // Process counter
     reg        [M:0]  proc_idx;
@@ -86,7 +94,9 @@ module fir #(
             done <= 1'b0;
             proc_idx <= {(M+1){1'b0}};
             fir_active <= 1'b0;
-        end else begin
+            scan_cnt <= 5'b0;
+            scan_shreg <= 26'b0;
+        end else if (!scan_en) begin
             out_valid <= 1'b0;
             done <= 1'b0;
 
@@ -163,6 +173,22 @@ module fir #(
                     proc_idx <= {(M+1){1'b0}};
                 end
             end
+        end else begin
+            // Scan out: shifts weights out with p-in/s-out shift register
+            scan_cnt <= scan_cnt + 1;
+            if (scan_cnt == 5'd0) begin     // load
+                scan_shreg <= w_reg[TAPS-1];
+                for (i = TAPS-1; i > 0; i=i-1) begin
+                    x_reg[i] <= x_reg[i-1];
+                end
+                for (i = TAPS-1; i > 0; i=i-1) begin
+                    w_reg[i] <= w_reg[i-1];
+                end
+                w_reg[0] <= {10'b0, x_reg[TAPS-1]};
+            end else if (scan_cnt == 5'd25) begin
+                scan_cnt <= 0;
+            end
+            scan_shreg <= {1'b0, shreg[25:1]};   
         end
     end
 

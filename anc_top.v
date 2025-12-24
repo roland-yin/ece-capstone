@@ -1,24 +1,27 @@
 module anc_top (
-    input  wire               clk,
-    input  wire               rst_n,
+    input  wire                 clk,
+    input  wire                 rst_n,
 
-    input  wire               init_done,
-    input  wire        [4:0]  prog_delay_sel,
-    input  wire               bypass_mode_sel,
-    
-    input  wire               in_valid,           // new input sample valid
-    output wire               controller_ready,   // controller ready for vr_merge
+    input  wire                 scan_en,
+    output wire                 scan_out,
 
-    input  wire signed [15:0] e_in,         // LMS e
-    input  wire signed [15:0] x_in,         // optional feedback or initial x
-    input  wire signed [15:0] a_in,         // desired output
-    input  wire signed [15:0] u_in,         // LMS step size (learning rate)
-    output wire signed [15:0] out_sample,   // FIR filter output
-    output wire               out_valid,    // output valid signal
-    
-    input       signed  [25:0]  weight_inject,
-    input  wire bypass_ready,
-    output wire fir_act
+    input  wire                 init_done,
+    input  wire        [4:0]    prog_delay_sel,
+    input  wire                 bypass_mode_sel,
+
+    input  wire                 in_valid,           // new input sample valid
+    output wire                 controller_ready,   // controller ready for vr_merge
+
+    input  wire signed [15:0]   e_in,         // LMS e
+    input  wire signed [15:0]   x_in,         // optional feedback or initial x
+    input  wire signed [15:0]   a_in,         // desired output
+    input  wire signed [15:0]   u_in,         // LMS step size (learning rate)
+    output wire signed [15:0]   out_sample,   // FIR filter output
+    output wire                 out_valid,    // output valid signal
+
+    input  wire signed [25:0]   weight_inject,
+    input  wire                 bypass_ready,
+    output wire                 fir_act
 );
 
 parameter TAPS = 256;
@@ -66,6 +69,8 @@ fir #(
 ) fir_inst (
     .clk(clk),
     .rst_n(rst_n),
+    .scan_en(scan_en),
+    .scan_out(scan_out),
     .x_in(x_controller),
     .a_in(a_controller),
     .weight_adjust(weight_adjust_controller),
@@ -73,8 +78,8 @@ fir #(
     .out_sample(out_sample),
     .out_valid(out_valid),
     .done(fir_done),
-    .weight_inject      ( weight_inject     ),
-    .bypass_mode_sel    ( bypass_mode_sel   ),
+    .weight_inject(weight_inject),
+    .bypass_mode_sel(bypass_mode_sel),
     .bypass_ready(bypass_ready),
     .fir_act(fir_act)
 );

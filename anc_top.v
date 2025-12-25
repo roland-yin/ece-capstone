@@ -19,8 +19,8 @@ module anc_top (
     output wire signed [15:0]   out_sample,   // FIR filter output
     output wire                 out_valid,    // output valid signal
 
-    input  wire signed [25:0]   weight_inject,
-    input  wire                 bypass_ready,
+    input  wire signed [6:0]    weight_inject,
+    input  wire                 bypass_valid,
     output wire                 fir_act
 );
 
@@ -80,7 +80,7 @@ fir #(
     .done(fir_done),
     .weight_inject(weight_inject),
     .bypass_mode_sel(bypass_mode_sel),
-    .bypass_ready(bypass_ready),
+    .bypass_valid(bypass_valid),
     .fir_act(fir_act)
 );
 

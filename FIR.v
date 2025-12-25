@@ -16,9 +16,10 @@ module fir #(
     output reg                  out_valid,
     output reg                  done,               // signals FIR completion to controller
 
-    input       signed  [25:0]  weight_inject,      // injected weight
-    input                       bypass_mode_sel,     // FPGA bypass: 0 - on chip, 1 - fpga
-    input wire                  bypass_ready,
+    input       signed  [6:0]   weight_inject,      // injected weight 7 pins
+    input                       bypass_clk,         // 4 * main clock (aligned with main with PLL)
+    input                       bypass_mode_sel,    // FPGA bypass: 0 - on chip, 1 - fpga
+    input wire                  bypass_valid,
     output wire                 fir_act
 );
 
@@ -73,6 +74,8 @@ module fir #(
 
     reg fir_active;
     assign fir_act = fir_active;
+    reg [27:0] bypass_reg;
+    
     integer i;
 
     always @ (posedge clk or negedge rst_n) begin
@@ -102,11 +105,11 @@ module fir #(
 
             if (fir_go && !fir_active) begin
                 fir_active <= 1'b1;
-                acc <= a_in <<< 15;        // initialize accumulator with a_in
+                acc <= a_in <<< 15;         // initialize accumulator with a_in
                 if (~bypass_mode_sel) begin
                     proc_idx <= {(M+1){1'b0}};
                 end else begin
-                    proc_idx <= 2;
+                    proc_idx <= 2;          // Bypass mode skips the first two cycles of pipeline
                 end
                 mult_A_a <= weight_adjust;
 
@@ -117,7 +120,7 @@ module fir #(
             end
 
 
-            if (fir_active && (bypass_ready || ~bypass_mode_sel)) begin
+            if (fir_active && (bypass_valid || ~bypass_mode_sel)) begin
                 // ---- MAC A: weight update ----
                 if (proc_idx < TAPS && ~bypass_mode_sel) begin
                     mult_A_b <= x_reg[proc_idx];    // pipeline reg for multiplier input (after register read-out mux)
@@ -135,7 +138,7 @@ module fir #(
                 end
 
                 if (mult_A_prod_valid || (bypass_mode_sel && proc_idx < TAPS+2)) begin
-                    w_reg[proc_idx-2] <= bypass_mode_sel ? weight_inject : sat_out;   // w_reg[proc_idx-2] + mult_A_prod
+                    w_reg[proc_idx-2] <= bypass_mode_sel ? bypass_reg[25:0] : sat_out;   // w_reg[proc_idx-2] + mult_A_prod
                     weight_valid <= 1'b1;
                 end else begin
                     weight_valid <= 1'b0;
@@ -188,8 +191,16 @@ module fir #(
             end else if (scan_cnt == 5'd25) begin
                 scan_cnt <= 0;
             end
-            scan_shreg <= {1'b0, shreg[25:1]};   
+            scan_shreg <= {1'b0, scan_shreg[25:1]};   
         end
     end
 
+
+    always @ (posedge bypass_clk or negedge rst_n) begin
+        if (!rst_n) begin
+            bypass_reg <= 'b0;
+        end else begin
+            bypass_reg <= {weight_inject, bypass_reg[27:7]};
+        end
+    end
 endmodule

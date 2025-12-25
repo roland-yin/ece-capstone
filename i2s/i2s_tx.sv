@@ -25,6 +25,13 @@ module i2s_tx
 );
 
 // -----------------------------------------------------------------------------
+// FIFO in case new sample arrives before previous sample is fully sent out
+wire            fifo_rd_vld;
+logic           fifo_rd_rdy;
+
+wire    [15:0]  fifo_dout;
+
+// -----------------------------------------------------------------------------
 // Make sure first sample does not come in the middle of right channel
 
 reg     start_n;
@@ -34,13 +41,6 @@ always @( posedge clk )
         start_n <= 1;
     else if ( fifo_rd_vld & start_n )
         start_n <= 0;
-
-// -----------------------------------------------------------------------------
-// FIFO in case new sample arrives before previous sample is fully sent out
-wire            fifo_rd_vld;
-logic           fifo_rd_rdy;
-
-wire    [15:0]  fifo_dout;
 
 vr_fifo #(
     .D_WIDTH    ( 16    ),

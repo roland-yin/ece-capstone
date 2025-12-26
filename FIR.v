@@ -187,7 +187,7 @@ module fir #(
                 for (i = TAPS-1; i > 0; i=i-1) begin
                     w_reg[i] <= w_reg[i-1];
                 end
-                w_reg[0] <= {10'b0, x_reg[TAPS-1]};
+                w_reg[0] <= {10{x_reg[TAPS-1][15]}, x_reg[TAPS-1]};
             end else if (scan_cnt == 5'd25) begin
                 scan_cnt <= 0;
             end

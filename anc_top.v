@@ -1,5 +1,6 @@
 module anc_top (
     input  wire                 clk,
+    input                       byp_clk,
     input  wire                 rst_n,
 
     input  wire                 scan_en,
@@ -68,6 +69,7 @@ fir #(
     .M(M)
 ) fir_inst (
     .clk(clk),
+    .bypass_clk(byp_clk),
     .rst_n(rst_n),
     .scan_en(scan_en),
     .scan_out(scan_out),

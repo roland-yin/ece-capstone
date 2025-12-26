@@ -1,37 +1,63 @@
 module hardware_top (
-	input wire clk,
-	input wire rst_n,
-
-	output wire ws,
-	output wire sck,
-
-	// Error mic
-	input wire sd_e,
-	// Reference mic
-	input wire sd_x,
-	// Audio input
-	input wire sd_a,
-	// LMS step size input
-	input wire sd_u,
-
-	//OUT TO DAC
-	output wire ws_out,
-	output wire sck_out,
-	output wire sd_out,
-
-	output wire fir_act,
-
-	// Initialization bits (serially shifted in on reset)
-	input wire init_in,
+    input   clk,
+    input   byp_clk,
+    input   scan_clk,
+    input   rst_n,
     
-	// FPGA bypass
-	input wire signed [6:0] weight_inject,
-	input wire bypass_valid,
-
-	// Scan enable and out
-	input  wire scan_en,
-	output wire scan_out
+    output wire i2s_ws_rx,
+    output wire i2s_sck_rx,
+    
+    // Error mic
+    input wire sd_e,
+    // Reference mic
+    input wire sd_x,
+    // Audio input
+    input wire sd_a,
+    // LMS step size input
+    input wire sd_u,
+    
+    //OUT TO DAC
+    output wire i2s_ws_tx,
+    output wire i2s_sck_tx,
+    output wire i2s_sd_out,
+    
+    output wire byp_rdy,
+    
+    // Initialization bits (serially shifted in on reset)
+    input wire init_in,
+    
+    // FPGA bypass
+    input wire signed [6:0] byp,
+    input wire byp_vld,
+    
+    // Scan enable and out
+    input  wire scan_en,
+    output wire scan_out
 );
+
+// glitch free clock mux
+reg     [1:0]   sync_core_clk, sync_scan_clk;
+wire    sync_core_out, sync_scan_out;
+
+always_ff @( posedge clk or negedge rst_n )
+    if ( ~rst_n )
+        sync_core_clk   <= 0;
+    else
+        sync_core_clk   <= { sync_core_clk, (~scan_en & ~sync_scan_out) };
+
+assign  sync_core_out   = sync_core_clk[1];
+        
+always_ff @( posedge scan_clk or negedge rst_n )
+    if ( ~rst_n )
+        sync_scan_clk   <= 0;
+    else
+        sync_scan_clk   <= { sync_scan_clk, (scan_en & ~sync_core_out) };
+
+assign  sync_scan_out   = sync_scan_clk[1];
+
+wire    out_clk = (sync_core_out & clk) | (sync_scan_out & scan_clk);
+
+
 
 wire signed [15:0] e_in;
 wire signed [15:0] x_in;
@@ -44,10 +70,10 @@ wire a_vld, a_rdy;
 wire u_vld, u_rdy;
 
 // i2s interfaces
-i2s_rx i2s_rx_e (.clk(clk), .rst_n(rst_n), .ws(ws), .sck(sck), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_x (.clk(clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_a (.clk(clk), .rst_n(rst_n), .sd(sd_a), .dout(a_in), .dout_vld(a_vld), .dout_rdy(a_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_u (.clk(clk), .rst_n(rst_n), .sd(sd_u), .dout(u_in), .dout_vld(u_vld), .dout_rdy(u_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_e (.clk(out_clk), .rst_n(rst_n), .ws(i2s_ws_rx), .sck(i2s_sck_rx), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_x (.clk(out_clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_a (.clk(out_clk), .rst_n(rst_n), .sd(sd_a), .dout(a_in), .dout_vld(a_vld), .dout_rdy(a_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_u (.clk(out_clk), .rst_n(rst_n), .sd(sd_u), .dout(u_in), .dout_vld(u_vld), .dout_rdy(u_rdy), .sck_period(i2s_in_clk_period));
 
 // Handshake with controller
 wire data_valid;
@@ -55,11 +81,11 @@ wire controller_ready;
 
 // Only enabling first 3 since u doesn't necessarily need to be updated and synchronized every cycle. Figure out later
 vr_merge #(4) vr_merge_inst (
-	.i_en(4'b1111),
-	.i_valid({e_vld, x_vld, a_vld, u_vld}),
-	.o_ready({e_rdy, x_rdy, a_rdy, u_rdy}),
-	.o_valid(data_valid),
-	.i_ready(controller_ready)
+    .i_en(4'b1111),
+    .i_valid({e_vld, x_vld, a_vld, u_vld}),
+    .o_ready({e_rdy, x_rdy, a_rdy, u_rdy}),
+    .o_valid(data_valid),
+    .i_ready(controller_ready)
 );
 
 // Initialization Sequence: Shifting in Initialization Bits
@@ -74,60 +100,62 @@ wire [4:0] prog_delay_sel;
 assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} = init_bits;
 
 always @ (posedge clk, negedge rst_n) begin
-	if (!rst_n) begin
-		init_bits <= 0;
-		init_cnt <= 0;
-		init_done <=0;
-	end else if (!init_done) begin
-		init_bits <= {init_in, init_bits[init_len-1:1]};
-
-		if (init_cnt == init_len-1) begin
-			init_done <= 1'b1;
-		end else begin
-			init_cnt <= init_cnt + 1;
-		end
-	end
+    if (!rst_n) begin
+        init_bits <= 0;
+        init_cnt <= 0;
+        init_done <=0;
+    end else if (!init_done) begin
+        init_bits <= {init_in, init_bits[init_len-1:1]};
+    
+    	if (init_cnt == init_len-1) begin
+            init_done <= 1'b1;
+    	end else begin
+            init_cnt <= init_cnt + 1;
+        end
+    end
 end
 
- wire signed [15:0] out_sample;	// FIR filter output
+wire signed [15:0] out_sample;	// FIR filter output
 // wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
-	.clk(clk),
-	.rst_n(rst_n),
-	.scan_en(scan_en),
-	.scan_out(scan_out),
-	.init_done(init_done),
-	.prog_delay_sel(prog_delay_sel),
-	.bypass_mode_sel(bypass_mode_sel),
-	.in_valid(data_valid),
-	.controller_ready(controller_ready),
-	.u_in(u_in),
-	.e_in(e_in),
-	.x_in(x_in),
-	.a_in(a_in),
-	.out_sample(out_sample),
-	.out_valid(out_valid),
-  	.weight_inject(weight_inject),
-  	.bypass_valid(bypass_valid),
- 	.fir_act(fir_act)
+    .clk(out_clk),
+    .byp_clk(byp_clk),
+    .rst_n(rst_n),
+    .scan_en(scan_en),
+    .scan_out(scan_out),
+    .init_done(init_done),
+    .prog_delay_sel(prog_delay_sel),
+    .bypass_mode_sel(bypass_mode_sel),
+    .in_valid(data_valid),
+    .controller_ready(controller_ready),
+    .u_in(u_in),
+    .e_in(e_in),
+    .x_in(x_in),
+    .a_in(a_in),
+    .out_sample(out_sample),
+    .out_valid(out_valid),
+    .weight_inject(byp),
+    .bypass_valid(byp_vld),
+    .fir_act(byp_rdy)
 );
 
 i2s_tx i2s_tx_inst (
-    .clk        (clk),
+    .clk        (out_clk),
     .rst_n      (rst_n),
     .bclk_period(i2s_out_clk_period),
 
     .sample_vld (out_valid),
     .sample     (out_sample),
 
-    .lr_clk     (ws_out),
-    .bclk       (sck_out),
-    .dout       (sd_out)
+    .lr_clk     (i2s_ws_tx),
+    .bclk       (i2s_sck_tx),
+    .dout       (i2s_sd_out)
 );
 
 
 // Plus stuff for DAC and interface with FPGA
 // if out_valid (one pulse) then send out output sample
+
 
 endmodule

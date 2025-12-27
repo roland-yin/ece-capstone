@@ -22,7 +22,7 @@ module anc_top (
 
     input  wire signed [6:0]    weight_inject,
     input  wire                 bypass_valid,
-    output wire                 fir_act
+    output wire                 bypass_ready
 );
 
 parameter TAPS = 256;
@@ -34,9 +34,7 @@ parameter M = 8;        // for register sizing based on TAPS = 2^M
 wire signed [15:0] x_controller;        // samples held by controller
 wire signed [15:0] a_controller;
 wire signed [15:0] weight_adjust_controller;
-wire signed [15:0] fir_out;
-wire               fir_done;
-wire               bypass_ready;
+wire    fir_done, fir_go;
 
 
 // ------------------------
@@ -83,7 +81,7 @@ fir #(
     .weight_inject(weight_inject),
     .bypass_mode_sel(bypass_mode_sel),
     .bypass_valid(bypass_valid),
-    .fir_act(fir_act)
+    .fir_act(bypass_ready)
 );
 
 endmodule

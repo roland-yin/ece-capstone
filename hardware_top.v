@@ -137,7 +137,7 @@ anc_top anc_top_inst (
     .out_valid(out_valid),
     .weight_inject(byp),
     .bypass_valid(byp_vld),
-    .fir_act(byp_rdy)
+    .bypass_ready(byp_rdy)
 );
 
 i2s_tx i2s_tx_inst (

@@ -69,6 +69,18 @@ wire x_vld, x_rdy;
 wire a_vld, a_rdy;
 wire u_vld, u_rdy;
 
+
+// Initialization Sequence: Shifting in Initialization Bits
+localparam init_len = 22;	// *Need to change counter length too, also see google sheets on current def
+reg [init_len-1:0] init_bits;
+reg [4:0] init_cnt;
+reg init_done;
+wire [7:0] i2s_in_clk_period, i2s_out_clk_period;
+wire bypass_mode_sel;
+wire [4:0] prog_delay_sel;
+
+assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} = init_bits;
+
 // i2s interfaces
 i2s_rx i2s_rx_e (.clk(out_clk), .rst_n(rst_n), .ws(i2s_ws_rx), .sck(i2s_sck_rx), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
 i2s_rx i2s_rx_x (.clk(out_clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
@@ -87,17 +99,6 @@ vr_merge #(4) vr_merge_inst (
     .o_valid(data_valid),
     .i_ready(controller_ready)
 );
-
-// Initialization Sequence: Shifting in Initialization Bits
-localparam init_len = 22;	// *Need to change counter length too, also see google sheets on current def
-reg [init_len-1:0] init_bits;
-reg [4:0] init_cnt;
-reg init_done;
-wire [7:0] i2s_in_clk_period, i2s_out_clk_period;
-wire bypass_mode_sel;
-wire [4:0] prog_delay_sel;
-
-assign {i2s_in_clk_period, i2s_out_clk_period, bypass_mode_sel, prog_delay_sel} = init_bits;
 
 always @ (posedge clk, negedge rst_n) begin
     if (!rst_n) begin

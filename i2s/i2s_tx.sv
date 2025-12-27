@@ -18,8 +18,8 @@ module i2s_tx
     input           sample_vld,
     input   [15:0]  sample,
 
-    output  reg     lr_clk,
-    output  reg     bclk,
+    output          lr_clk,
+    output          bclk,
     output  reg     dout
 
 );

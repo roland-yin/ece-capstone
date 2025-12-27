@@ -16,8 +16,8 @@ generate
 		wire [N:0]   sout_row;
 		wire [N-1:0] cout_row;
 		if (r == 0) begin
-			assign cout_row = 'b0;
-			assign sout_row = 'b0;
+			assign cout_row = N{1'b0};
+			assign sout_row = (N+1){1'b0};
 		end else begin
 			assign p[r-1] = sout_row[0];	// Connect to output
 			if (r == N) begin

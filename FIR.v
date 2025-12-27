@@ -201,7 +201,7 @@ module fir #(
 
     always @ (posedge bypass_clk or negedge rst_n) begin
         if (!rst_n) begin
-            bypass_reg <= 'b0;
+            bypass_reg <= 28'b0;
         end else begin
             bypass_reg <= {weight_inject, bypass_reg[27:7]};
         end

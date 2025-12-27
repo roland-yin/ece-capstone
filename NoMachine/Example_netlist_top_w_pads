@@ -79,7 +79,7 @@ PDDW16SDGZ_G	i2s_word_tx	(.PAD(I2S_WS_TX_P), .I(I2S_WS_TX), .OEN(1'b0), .REN(1'b
 PDDW16SDGZ_G	i2s_clock_tx	(.PAD(I2S_SCK_TX_P), .I(I2S_SCK_TX), .OEN(1'b0), .REN(1'b0));
 PDDW16SDGZ_G	i2s_data_output	(.PAD(I2S_SDO_P), .C(I2S_SDO), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G	core_reset	(.PAD(RSTN_P), .I(RSTN), .OEN(1'b0), .REN(1'b0));
-PDDW16SDGZ_G	core_clock	(.PAD(CCLK_P), .I(CCLK), .OEN(1'b0), .REN(1'b0));
+PDDW16SDGZ_G	core_clock	(.PAD(CLK_P), .I(CLK), .OEN(1'b0), .REN(1'b0));
 PDDW16SDGZ_G	bypass_clock	(.PAD(BYP_CLK_P), .I(BYP_CLK), .OEN(1'b0), .REN(1'b0));
 PDDW16SDGZ_G	NC1 (.PAD(NC1_P), .C(NC1), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 //PADs South
@@ -104,7 +104,7 @@ PDDW16SDGZ_G    bypass_valid    (.PAD(BYP_VLD_P), .C(BYP_VLD), .I(1'b0), .OEN(1'
 PDDW16SDGZ_G    intialization    (.PAD(INIT_IN_P), .C(INIT_IN), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G    scan_enable    (.PAD(SCAN_EN_P), .C(SCAN_EN), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G    scan_out    (.PAD(SCAN_O_P), .I(SCAN_O), .OEN(1'b0), .REN(1'b0));
-PDDW16SDGZ_G	scan_clock    (.PAD(SCAN_EN_P), .C(SCAN_EN), .I(1'b0), .OEN(1'b1), .REN(1'b1));
+PDDW16SDGZ_G	scan_clock    (.PAD(SCAN_CLK_P), .C(SCAN_CLK), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G    NC2 (.PAD(NC2_P), .C(NC2), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 
 // Instantiate the Chip Verilog Block 

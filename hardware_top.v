@@ -100,7 +100,7 @@ vr_merge #(4) vr_merge_inst (
     .i_ready(controller_ready)
 );
 
-always @ (posedge clk, negedge rst_n) begin
+always @ (posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         init_bits <= 0;
         init_cnt <= 0;

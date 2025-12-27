@@ -39,7 +39,7 @@ module hardware_top (
 reg     [1:0]   sync_core_clk, sync_scan_clk;
 wire    sync_core_out, sync_scan_out;
 
-always_ff @( posedge clk or negedge rst_n )
+always @( posedge clk or negedge rst_n )
     if ( ~rst_n )
         sync_core_clk   <= 0;
     else
@@ -47,7 +47,7 @@ always_ff @( posedge clk or negedge rst_n )
 
 assign  sync_core_out   = sync_core_clk[1];
         
-always_ff @( posedge scan_clk or negedge rst_n )
+always @( posedge scan_clk or negedge rst_n )
     if ( ~rst_n )
         sync_scan_clk   <= 0;
     else
@@ -117,7 +117,7 @@ always @ (posedge clk, negedge rst_n) begin
 end
 
 wire signed [15:0] out_sample;	// FIR filter output
-// wire               out_valid;	// output valid signal
+wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
     .clk(out_clk),

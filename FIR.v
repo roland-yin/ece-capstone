@@ -81,7 +81,7 @@ module fir #(
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < TAPS; i=i+1) begin
-                w_reg[i] <= 16'sd0;
+                w_reg[i] <= 26'sd0;
                 x_reg[i] <= 16'sd0;
             end
             mult_A_prod <= 32'sd0; 
@@ -191,7 +191,10 @@ module fir #(
             end else if (scan_cnt == 5'd25) begin
                 scan_cnt <= 0;
             end
-            scan_shreg <= {1'b0, scan_shreg[25:1]};   
+            else
+            begin
+                scan_shreg <= {1'b0, scan_shreg[25:1]};   
+            end
         end
     end
 

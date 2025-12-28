@@ -92,7 +92,7 @@ module controller (
                 end
 
                 S_PIPE: begin
-                    weight_adjust <= mult_p >>> 15;     // q1.15*q1.15->q2.30, but first two bits are always same so drop msb and lower 15 bits to get back q1.5
+                    weight_adjust <= mult_p >>> 15;     // q1.15*q1.15->q2.30, but first two bits are always same so drop msb and lower 15 bits to get back q1.15
                     x_out <= x_buf;     // feed input to FIR
                     a_out <= a_buf;
                     fir_go <= 1'b1;     // signal FIR to start

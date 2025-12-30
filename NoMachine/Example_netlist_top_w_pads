@@ -13,7 +13,7 @@ BYP_P,BYP_RDY_P,BYP_VLD_P,
 // initialization
 INIT_IN_P,
 // scan
-SCAN_EN_P,SCAN_O_P,
+SCAN_EN_P,SCAN_W_P,,SCAN_X_P
 // not connected
 NC0_P,NC1_P,NC2_P
 );
@@ -50,9 +50,9 @@ wire INIT_IN_P;
 wire INIT_IN; // core
 //scan
 input SCAN_EN_P;
-output SCAN_O_P;
-wire SCAN_EN_P,SCAN_O_P;
-wire SCAN_EN,SCAN_O; // core
+output SCAN_W_P,SCAN_X_P;
+wire SCAN_EN_P,SCAN_W_P,SCAN_X_P;
+wire SCAN_EN,SCAN_W_P,SCAN_X_P; // core
 //not connected
 inout NC0_P,NC1_P,NC2_P;
 wire NC0_P,NC1_P,NC2_P;
@@ -103,9 +103,9 @@ PDDW16SDGZ_G	bypass_ready    (.PAD(BYP_RDY_P), .I(BYP_RDY), .OEN(1'b0), .REN(1'b
 PDDW16SDGZ_G    bypass_valid    (.PAD(BYP_VLD_P), .C(BYP_VLD), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G    intialization    (.PAD(INIT_IN_P), .C(INIT_IN), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 PDDW16SDGZ_G    scan_enable    (.PAD(SCAN_EN_P), .C(SCAN_EN), .I(1'b0), .OEN(1'b1), .REN(1'b1));
-PDDW16SDGZ_G    scan_out    (.PAD(SCAN_O_P), .I(SCAN_O), .OEN(1'b0), .REN(1'b0));
+PDDW16SDGZ_G    scan_weight    (.PAD(SCAN_W_P), .I(SCAN_W), .OEN(1'b0), .REN(1'b0));
+PDDW16SDGZ_G    scan_xdata    (.PAD(SCAN_X_P), .I(SCAN_X), .OEN(1'b0), .REN(1'b0));
 PDDW16SDGZ_G	scan_clock    (.PAD(SCAN_CLK_P), .C(SCAN_CLK), .I(1'b0), .OEN(1'b1), .REN(1'b1));
-PDDW16SDGZ_G    NC2 (.PAD(NC2_P), .C(NC2), .I(1'b0), .OEN(1'b1), .REN(1'b1));
 
 // Instantiate the Chip Verilog Block 
 hardware_top core (
@@ -122,7 +122,7 @@ hardware_top core (
 //initialization
 .INIT_IN(INIT_IN),
 //scan
-.SCAN_EN(SCAN_EN),.SCAN_O(SCAN_O)
+.SCAN_EN(SCAN_EN),.SCAN_W(SCAN_W),.SCAN_X(SCAN_X)
 );
 endmodule
 

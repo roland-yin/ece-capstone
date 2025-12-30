@@ -1,5 +1,5 @@
 // top level pins shit
-module controlchip(
+module anc_chip (
 // power
 VDD, GND,
 // i2s microphone

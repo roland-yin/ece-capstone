@@ -36,7 +36,7 @@ wire    [15:0]  fifo_dout;
 
 reg     start_n;
 
-always @( posedge clk )
+always @( posedge clk or negedge rst_n )
     if ( ~rst_n )
         start_n <= 1;
     else if ( fifo_rd_vld & start_n )

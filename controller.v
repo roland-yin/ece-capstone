@@ -2,6 +2,8 @@ module controller (
     input  wire                 clk,
     input  wire                 rst_n,
 
+    input  wire                 scan_en,
+
     input  wire                 init_done,            // initialization bits
     input  wire        [4:0]    prog_delay_sel,
     input  wire                 bypass_mode_sel,
@@ -60,7 +62,7 @@ module controller (
             x_buf <= 16'sd0;
             a_buf <= 16'sd0;
             u_buf <= 16'sd0;
-        end else begin
+        end else if (!scan_en) begin
             // Defaults     
             fir_go <= 1'b0;          
             controller_ready <= 1'b0;

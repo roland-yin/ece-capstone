@@ -6,7 +6,8 @@ module fir #(
     input  wire                 rst_n,
 
     input  wire                 scan_en,
-    output wire                 scan_out,
+    output wire                 scan_out_x,
+    output wire                 scan_out_w,
 
     input  wire signed [15:0]   x_in,               // input from controller
     input  wire signed [15:0]   a_in,               // input from controller
@@ -41,8 +42,10 @@ module fir #(
 
     // Scan_out counter
     reg [4:0] scan_cnt;
-    reg [25:0] scan_shreg;
-    assign scan_out = scan_shreg[0];
+    reg [25:0] scan_shreg_x;
+    reg [25:0] scan_shreg_w;
+    assign scan_out_x = scan_shreg_x[0];
+    assign scan_out_w = scan_shreg_w[0];
 
     // Process counter
     reg        [M:0]  proc_idx;
@@ -98,7 +101,8 @@ module fir #(
             proc_idx <= {(M+1){1'b0}};
             fir_active <= 1'b0;
             scan_cnt <= 5'b0;
-            scan_shreg <= 26'b0;
+            scan_shreg_x <= 26'b0;
+            scan_shreg_w <= 26'b0;
         end else if (!scan_en) begin
             out_valid <= 1'b0;
             done <= 1'b0;
@@ -179,21 +183,23 @@ module fir #(
         end else begin
             // Scan out: shifts weights out with p-in/s-out shift register
             scan_cnt <= scan_cnt + 1;
+            if (scan_cnt == 5'd25)
+                scan_cnt <= 5'd0;
+            
             if (scan_cnt == 5'd0) begin     // load
-                scan_shreg <= w_reg[TAPS-1];
+                scan_shreg_x <= {{(10){x_reg[TAPS-1][15]}}, x_reg[TAPS-1]};   // Sign extended to 26 bits
+                scan_shreg_w <= w_reg[TAPS-1];
                 for (i = TAPS-1; i > 0; i=i-1) begin
                     x_reg[i] <= x_reg[i-1];
                 end
                 for (i = TAPS-1; i > 0; i=i-1) begin
                     w_reg[i] <= w_reg[i-1];
                 end
-                w_reg[0] <= { {10{x_reg[TAPS-1][15]}}, x_reg[TAPS-1] };
-            end else if (scan_cnt == 5'd25) begin
-                scan_cnt <= 0;
-            end
-            else
-            begin
-                scan_shreg <= {1'b0, scan_shreg[25:1]};   
+                x_reg[0] <= x_reg[TAPS-1];
+                w_reg[0] <= w_reg[TAPS-1];
+            end else begin
+                scan_shreg_x <= {1'b0, scan_shreg_x[25:1]};
+                scan_shreg_w <= {1'b0, scan_shreg_w[25:1]};
             end
         end
     end

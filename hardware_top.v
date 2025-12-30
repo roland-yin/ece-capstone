@@ -32,7 +32,8 @@ module hardware_top (
     
     // Scan enable and out
     input  wire scan_en,
-    output wire scan_out
+    output wire scan_out_x,
+    output wire scan_out_w
 );
 
 // -----------------------------------------------------------------------------
@@ -48,7 +49,7 @@ always @( posedge clk or negedge rst_n )
     else
         sync_core_clk   <= { sync_core_clk[0], (~scan_en_eff & ~sync_scan_out) };
 
-assign  sync_core_out   = sync_core_clk[1];
+assign  sync_core_out   = sync_core_clk[0];     // 1 for double FF and 0 for single FF
         
 always @( posedge scan_clk or negedge rst_n )
     if ( ~rst_n )
@@ -56,7 +57,7 @@ always @( posedge scan_clk or negedge rst_n )
     else
         sync_scan_clk   <= { sync_scan_clk[0], (scan_en_eff & ~sync_core_out) };
 
-assign  sync_scan_out   = sync_scan_clk[1];
+assign  sync_scan_out   = sync_scan_clk[0];     // 1 for double FF and 0 for single FF
 
 wire    out_clk = (sync_core_out & clk) | (sync_scan_out & scan_clk);
 
@@ -161,7 +162,8 @@ anc_top anc_top_inst (
     .rst_n(rst_n),
 
     .scan_en(scan_en_eff),
-    .scan_out(scan_out),
+    .scan_out_x(scan_out_x),
+    .scan_out_w(scan_out_w),
 
     .init_done(init_done),
     .prog_delay_sel(prog_delay_sel),

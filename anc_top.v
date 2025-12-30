@@ -4,7 +4,8 @@ module anc_top (
     input  wire                 rst_n,
 
     input  wire                 scan_en,
-    output wire                 scan_out,
+    output wire                 scan_out_x,
+    output wire                 scan_out_w,
 
     input  wire                 init_done,
     input  wire        [4:0]    prog_delay_sel,
@@ -43,6 +44,7 @@ wire    fir_done, fir_go;
 controller controller_inst (
     .clk(clk),
     .rst_n(rst_n),
+    .scan_en(scan_en),
     .init_done(init_done),
     .prog_delay_sel(prog_delay_sel),
     .bypass_mode_sel(bypass_mode_sel),
@@ -70,7 +72,8 @@ fir #(
     .bypass_clk(byp_clk),
     .rst_n(rst_n),
     .scan_en(scan_en),
-    .scan_out(scan_out),
+    .scan_out_x(scan_out_x),
+    .scan_out_w(scan_out_w),
     .x_in(x_controller),
     .a_in(a_controller),
     .weight_adjust(weight_adjust_controller),

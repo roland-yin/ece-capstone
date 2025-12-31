@@ -48,7 +48,10 @@ module fir #(
     assign scan_out_w = scan_shreg_w[0];
 
     // Process counter
-    reg        [M:0]  proc_idx;
+    reg        [M:0]  proc_idx;     // One bit larger
+    reg        [M:0]  proc_idxd1;   // Pipelined idx
+    reg        [M:0]  proc_idxd2;
+    reg        [M:0]  proc_idxd3;
 
     // Addition saturation (w+x*weight_adjust)
     // wire signed [16:0] sat_in;
@@ -57,7 +60,7 @@ module fir #(
     // saturate #(17,16) saturate_inst (.in(sat_in), .out(sat_out));
     wire signed [26:0] sat_in;
     wire signed [25:0] sat_out;
-    assign sat_in = $signed({{10{mult_A_prod[31]}}, mult_A_prod[30:15]}) + $signed({w_reg[proc_idx-2][25], w_reg[proc_idx-2]});
+    assign sat_in = $signed({{10{mult_A_prod[31]}}, mult_A_prod[30:15]}) + $signed({w_reg[proc_idxd2][25], w_reg[proc_idxd2]});
     saturate #(27,26) saturate_inst (.in(sat_in), .out(sat_out));
 
     // Accumulator output saturation (a+accum)
@@ -99,6 +102,9 @@ module fir #(
             out_valid <= 1'b0;
             done <= 1'b0;
             proc_idx <= {(M+1){1'b0}};
+            proc_idxd1 <= {(M+1){1'b0}};
+            proc_idxd2 <= {(M+1){1'b0}};
+            proc_idxd3 <= {(M+1){1'b0}};
             fir_active <= 1'b0;
             scan_cnt <= 5'b0;
             scan_shreg_x <= 26'b0;
@@ -112,8 +118,14 @@ module fir #(
                 acc <= {{(M+2){a_in[15]}}, a_in, 15'b0};         // initialize accumulator with a_in shifted up 15 bits
                 if (~bypass_mode_sel) begin
                     proc_idx <= {(M+1){1'b0}};
+                    proc_idxd1 <= {(M+1){1'b0}};
+                    proc_idxd2 <= {(M+1){1'b0}};
+                    proc_idxd3 <= {(M+1){1'b0}};
                 end else begin
                     proc_idx <= 2;          // Bypass mode skips the first two cycles of pipeline
+                    proc_idxd1 <= 1;
+                    proc_idxd2 <= 0;
+                    proc_idxd3 <= 0;
                 end
                 mult_A_a <= weight_adjust;
 
@@ -142,7 +154,7 @@ module fir #(
                 end
 
                 if (mult_A_prod_valid || (bypass_mode_sel && proc_idx < TAPS+2)) begin
-                    w_reg[proc_idx-2] <= bypass_mode_sel ? bypass_reg[25:0] : sat_out;   // w_reg[proc_idx-2] + mult_A_prod
+                    w_reg[proc_idxd2] <= bypass_mode_sel ? bypass_reg[25:0] : sat_out;   // w_reg[proc_idx-2] + mult_A_prod
                     weight_valid <= 1'b1;
                 end else begin
                     weight_valid <= 1'b0;
@@ -150,8 +162,8 @@ module fir #(
 
                 // ---- MAC B: output computation ----
                 if (weight_valid) begin
-                    mult_B_a <= w_reg[proc_idx-3][25:10];  // pipeline reg for multiplier input (after register read-out mux)
-                    mult_B_b <= x_reg[proc_idx-3];
+                    mult_B_a <= w_reg[proc_idxd3][25:10];  // pipeline reg for multiplier input (after register read-out mux)
+                    mult_B_b <= x_reg[proc_idxd3];
                     w_reg_read_valid <= 1'b1;
                 end else begin
                     w_reg_read_valid <= 1'b0;
@@ -170,6 +182,9 @@ module fir #(
                 end
                 
                 proc_idx <= proc_idx + 1'b1;
+                proc_idxd1 <= proc_idx;           // Pipelined idx
+                proc_idxd2 <= proc_idxd1;
+                proc_idxd3 <= proc_idxd2;
                 // FIR done
                 if (proc_idx == TAPS + 6) begin
                     out_sample <= sat_a_out;        // saturated accum value (16 bits)
@@ -178,6 +193,9 @@ module fir #(
                     fir_active <= 1'b0;             // reset for next run
                     acc <= {(M+33){1'b0}};
                     proc_idx <= {(M+1){1'b0}};
+                    proc_idxd1 <= {(M+1){1'b0}};
+                    proc_idxd2 <= {(M+1){1'b0}};
+                    proc_idxd3 <= {(M+1){1'b0}};
                 end
             end
         end else begin

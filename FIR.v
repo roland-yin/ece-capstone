@@ -109,7 +109,7 @@ module fir #(
 
             if (fir_go && !fir_active) begin
                 fir_active <= 1'b1;
-                acc <= {{(M+2){a_in[15]}}, a_in <<< 15};         // initialize accumulator with a_in
+                acc <= {{(M+2){a_in[15]}}, a_in, 15'b0};         // initialize accumulator with a_in shifted up 15 bits
                 if (~bypass_mode_sel) begin
                     proc_idx <= {(M+1){1'b0}};
                 end else begin

@@ -53,8 +53,7 @@ module controller (
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state <= S_INIT;
-            x_out <= 16'sd0;
+            state <= S_INIT;  
             weight_adjust <= 16'sd0;
             fir_go <= 1'b0;
             controller_ready <= 1'b0;
@@ -62,6 +61,8 @@ module controller (
             x_buf <= 16'sd0;
             a_buf <= 16'sd0;
             u_buf <= 16'sd0;
+            x_out <= 16'sd0;
+            a_out <= 16'sd0;
         end else if (!scan_en) begin
             // Defaults     
             fir_go <= 1'b0;          

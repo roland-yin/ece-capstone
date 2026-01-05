@@ -25,7 +25,7 @@ module fir #(
 );
 
     // Accumulator register
-    reg signed [M+32:0] acc;      // 7+32+1 (128 of 32 bit values + a_in)
+    reg signed [M+32:0] acc;      // M+32+1 (TAPS of 32 bit values + a_in)
 
     reg signed [25:0] w_reg [0:TAPS-1];
     reg signed [15:0] x_reg [0:TAPS-1];

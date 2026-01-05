@@ -65,6 +65,10 @@ always #1.25 byp_clk = ~byp_clk;
 always #2.5  scan_clk = ~scan_clk;
 
 reg scan_en;
+wire scan_freeze;
+assign scan_freeze = scan_en;
+
+wire mux_clk;
 
 // Shift accumulator for one word
 reg [25:0] accum_x;
@@ -74,15 +78,15 @@ reg [25:0] captured_w [0:255];
 reg  [8:0] word_idx;              // 0..255
 reg  [4:0] bit_idx;              // 0..25
 reg        frame_done;
-reg collect_start;
 
 reg scan_sync_en;
-always @ (posedge clk or negedge rst_n) begin
+reg frame_done_sync;
+always @ (posedge mux_clk or negedge rst_n) begin
 	if (!rst_n) begin
 		scan_sync_en <= 1'b0;
 	end else begin
 		scan_sync_en <= 1'b0;
-		if (!scan_en && scan_start) begin
+		if (frame_done_sync && scan_start) begin
 			scan_sync_en <= 1'b1;
 		end
 	end
@@ -96,16 +100,19 @@ always @ (posedge scan_clk or negedge rst_n) begin
 		accum_x   		<= 26'b0;
 		accum_w   		<= 26'b0;
 		frame_done		<= 1'b0;
-		collect_start	<= 1'b0;
+		frame_done_sync <= 1'b1;
 	end else begin
 		frame_done <= 1'b0;
+		
 		if (scan_sync_en) begin
 			scan_en <= 1'b1;
+			frame_done_sync <= 1'b0;
 		end
-		if (scan_en)
-			collect_start <= 1'b1;	// Delay 1 cycle
 
-		if (collect_start) begin
+		if (frame_done)
+			frame_done_sync <= 1'b1;
+
+		if (scan_en) begin
 			// --- LSB-first assembly (scan_bit is LSB first) ---
 			// first bit received goes to bit 0, next to bit 1, etc.
 			accum_x[bit_idx] <= scan_out_x;
@@ -121,7 +128,6 @@ always @ (posedge scan_clk or negedge rst_n) begin
 				if (word_idx == 9'd0) begin
 					word_idx   <= 9'd255;
 					frame_done <= 1'b1; // one full frame collected
-					collect_start <= 1'b0;
 					scan_en <= 1'b0;
 				end else begin
 					word_idx <= word_idx - 1'b1;
@@ -136,33 +142,36 @@ end
 // ---------------------------------------------------------------------------
 // DUT instance
 hardware_top dut (
-	.clk       (clk),
-	.byp_clk   (byp_clk),
-	.scan_clk  (scan_clk),
-	.rst_n     (rst_n),
+	.clk       		(clk),
+	.byp_clk   		(byp_clk),
+	.scan_clk  		(scan_clk),
+	.rst_n     		(rst_n),
 
-	.i2s_ws_rx (i2s_ws_rx),
-	.i2s_sck_rx(i2s_sck_rx),
+	.mux_clk		(mux_clk),
 
-	.sd_e      (sd_e),
-	.sd_x      (sd_x),
-	.sd_a      (sd_a),
-	.sd_u      (sd_u),
+	.i2s_ws_rx 		(i2s_ws_rx),
+	.i2s_sck_rx		(i2s_sck_rx),
 
-	.i2s_ws_tx (i2s_ws_tx),
-	.i2s_sck_tx(i2s_sck_tx),
-	.i2s_sd_out(i2s_sd_out),
+	.sd_e      		(sd_e),
+	.sd_x      		(sd_x),
+	.sd_a      		(sd_a),
+	.sd_u      		(sd_u),
 
-	.byp_rdy   (byp_rdy),
+	.i2s_ws_tx 		(i2s_ws_tx),
+	.i2s_sck_tx		(i2s_sck_tx),
+	.i2s_sd_out		(i2s_sd_out),
 
-	.init_in   (init_in),
+	.byp_rdy   		(byp_rdy),
 
-	.byp       (byp),
-	.byp_vld   (byp_vld),
+	.init_in   		(init_in),
 
-	.scan_en   (scan_en),
-	.scan_out_x(scan_out_x),
-	.scan_out_w(scan_out_w)
+	.byp       		(byp),
+	.byp_vld   		(byp_vld),
+
+	.scan_en   		(scan_en),
+	.scan_freeze	(scan_freeze),
+	.scan_out_x		(scan_out_x),
+	.scan_out_w		(scan_out_w)
 );
 
 endmodule

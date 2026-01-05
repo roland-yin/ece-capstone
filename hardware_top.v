@@ -1,8 +1,10 @@
 module hardware_top (
-    input   clk,
-    input   byp_clk,
-    input   scan_clk,
-    input   rst_n,
+    input wire clk,
+    input wire byp_clk,
+    input wire scan_clk,
+    input wire rst_n,
+
+    output wire mux_clk,
     
     output wire i2s_ws_rx,
     output wire i2s_sck_rx,
@@ -32,6 +34,7 @@ module hardware_top (
     
     // Scan enable and out
     input  wire scan_en,
+    input  wire scan_freeze,
     output wire scan_out_x,
     output wire scan_out_w
 );
@@ -59,8 +62,9 @@ always @( posedge scan_clk or negedge rst_n )
 
 assign  sync_scan_out   = sync_scan_clk[0];     // 1 for double FF and 0 for single FF
 
-wire    out_clk = (sync_core_out & clk) | (sync_scan_out & scan_clk);
+assign mux_clk = (sync_core_out & clk) | (sync_scan_out & scan_clk);
 
+wire scan_freeze_eff = scan_freeze | sync_scan_clk;
 
 // -----------------------------------------------------------------------------
 // i/o wires
@@ -106,10 +110,10 @@ assign scan_en_eff = scan_en & init_done;
 
 // -----------------------------------------------------------------------------
 // i2s interfaces
-i2s_rx i2s_rx_e (.clk(out_clk), .rst_n(rst_n), .ws(i2s_ws_rx), .sck(i2s_sck_rx), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_x (.clk(out_clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_a (.clk(out_clk), .rst_n(rst_n), .sd(sd_a), .dout(a_in), .dout_vld(a_vld), .dout_rdy(a_rdy), .sck_period(i2s_in_clk_period));
-i2s_rx i2s_rx_u (.clk(out_clk), .rst_n(rst_n), .sd(sd_u), .dout(u_in), .dout_vld(u_vld), .dout_rdy(u_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_e (.clk(clk), .rst_n(rst_n), .ws(i2s_ws_rx), .sck(i2s_sck_rx), .sd(sd_e), .dout(e_in), .dout_vld(e_vld), .dout_rdy(e_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_x (.clk(clk), .rst_n(rst_n), .sd(sd_x), .dout(x_in), .dout_vld(x_vld), .dout_rdy(x_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_a (.clk(clk), .rst_n(rst_n), .sd(sd_a), .dout(a_in), .dout_vld(a_vld), .dout_rdy(a_rdy), .sck_period(i2s_in_clk_period));
+i2s_rx i2s_rx_u (.clk(clk), .rst_n(rst_n), .sd(sd_u), .dout(u_in), .dout_vld(u_vld), .dout_rdy(u_rdy), .sck_period(i2s_in_clk_period));
 
 // -----------------------------------------------------------------------------
 // Handshake with controller
@@ -157,11 +161,13 @@ wire signed [15:0] out_sample;	// FIR filter output
 wire               out_valid;	// output valid signal
 
 anc_top anc_top_inst (
-    .clk(out_clk),
+    .clk(clk),
     .byp_clk(byp_clk),
+    .mux_clk(mux_clk),
     .rst_n(rst_n),
 
     .scan_en(scan_en_eff),
+    .scan_freeze(scan_freeze_eff),
     .scan_out_x(scan_out_x),
     .scan_out_w(scan_out_w),
 
@@ -189,7 +195,7 @@ anc_top anc_top_inst (
 // -----------------------------------------------------------------------------
 // i2s tx to DAC
 i2s_tx i2s_tx_inst (
-    .clk        (out_clk),
+    .clk        (clk),
     .rst_n      (rst_n),
     .bclk_period(i2s_out_clk_period),
 

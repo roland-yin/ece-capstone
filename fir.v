@@ -3,12 +3,17 @@ module fir #(
     parameter M = 8         // for register sizing based on TAPS = 2^M
 ) (
     input  wire                 clk,
+    input                       bypass_clk,         // 4 * main clock (aligned with main with PLL)
+    input  wire                 mux_clk,            // from clk mux (switches between main clk and scan_clk)
     input  wire                 rst_n,
-
-    input  wire                 scan_en,
+    
+    // Scan out
+    input  wire                 scan_en,            // scan_out enable (held for duration of scanning out)
+    input  wire                 scan_freeze,        // freeze rest of circuit when scanning out (same with scan_en if need to freeze, =0 if don't)
     output wire                 scan_out_x,
     output wire                 scan_out_w,
 
+    // Normal Function
     input  wire signed [15:0]   x_in,               // input from controller
     input  wire signed [15:0]   a_in,               // input from controller
     input  wire signed [15:0]   weight_adjust,      // weight update from controller
@@ -17,8 +22,8 @@ module fir #(
     output reg                  out_valid,
     output reg                  done,               // signals FIR completion to controller
 
+    // Bypass
     input       signed  [6:0]   weight_inject,      // injected weight 7 pins
-    input                       bypass_clk,         // 4 * main clock (aligned with main with PLL)
     input                       bypass_mode_sel,    // FPGA bypass: 0 - on chip, 1 - fpga
     input wire                  bypass_valid,
     output wire                 fir_act
@@ -39,13 +44,6 @@ module fir #(
     reg               weight_valid;
     reg               x_reg_read_valid;     // pipeline reg for output of register read-out mux
     reg               w_reg_read_valid;
-
-    // Scan_out counter
-    reg [4:0] scan_cnt;
-    reg [25:0] scan_shreg_x;
-    reg [25:0] scan_shreg_w;
-    assign scan_out_x = scan_shreg_x[0];
-    assign scan_out_w = scan_shreg_w[0];
 
     // Process counter
     reg        [M:0]  proc_idx;     // One bit larger
@@ -106,10 +104,7 @@ module fir #(
             proc_idxd2 <= {(M+1){1'b0}};
             proc_idxd3 <= {(M+1){1'b0}};
             fir_active <= 1'b0;
-            scan_cnt <= 5'b0;
-            scan_shreg_x <= 26'b0;
-            scan_shreg_w <= 26'b0;
-        end else if (!scan_en) begin
+        end else if (!scan_freeze) begin
             out_valid <= 1'b0;
             done <= 1'b0;
 
@@ -134,7 +129,6 @@ module fir #(
                 end
                 x_reg[0] <=  x_in;  
             end
-
 
             if (fir_active && (bypass_valid || ~bypass_mode_sel)) begin
                 // ---- MAC A: weight update ----
@@ -199,35 +193,59 @@ module fir #(
                 end
             end
         end else begin
-            // Scan out: shifts weights out with p-in/s-out shift register
-            scan_cnt <= scan_cnt + 1;
-            if (scan_cnt == 5'd25)
-                scan_cnt <= 5'd0;
-            
-            if (scan_cnt == 5'd0) begin     // load
-                scan_shreg_x <= {{(10){x_reg[TAPS-1][15]}}, x_reg[TAPS-1]};   // Sign extended to 26 bits
-                scan_shreg_w <= w_reg[TAPS-1];
-                for (i = TAPS-1; i > 0; i=i-1) begin
-                    x_reg[i] <= x_reg[i-1];
-                end
-                for (i = TAPS-1; i > 0; i=i-1) begin
-                    w_reg[i] <= w_reg[i-1];
-                end
-                x_reg[0] <= x_reg[TAPS-1];
-                w_reg[0] <= w_reg[TAPS-1];
-            end else begin
-                scan_shreg_x <= {1'b0, scan_shreg_x[25:1]};
-                scan_shreg_w <= {1'b0, scan_shreg_w[25:1]};
-            end
+ 
         end
     end
-
 
     always @ (posedge bypass_clk or negedge rst_n) begin
         if (!rst_n) begin
             bypass_reg <= 28'b0;
         end else begin
             bypass_reg <= {weight_inject, bypass_reg[27:7]};
+        end
+    end
+
+    // Scan_out
+    reg [4:0] scan_cnt;
+    reg signed [15:0] x_reg_scan [0:TAPS-1];
+    reg signed [25:0] w_reg_scan [0:TAPS-1];
+
+    assign scan_out_x = x_reg_scan[TAPS-1][0];
+    assign scan_out_w = w_reg_scan[TAPS-1][0];
+
+    always @ (posedge mux_clk or negedge rst_n) begin
+        if (!rst_n) begin
+            for (i = 0; i < TAPS; i=i+1) begin
+                w_reg_scan[i] <= 26'sd0;
+                x_reg_scan[i] <= 16'sd0;
+            end
+            scan_cnt <= 5'b0;
+        end else begin
+            if (!scan_en) begin
+                for (i = 0; i < TAPS; i = i + 1) begin
+                    x_reg_scan[i] <= x_reg[i];
+                    w_reg_scan[i] <= w_reg[i];
+                end
+            end else begin
+                // Scan out: shifts weights out with p-in/s-out shift register
+                scan_cnt <= scan_cnt + 1;
+                if (scan_cnt == 5'd25)
+                    scan_cnt <= 5'd0;
+                
+                if (scan_cnt == 5'd25) begin     // load
+                    // scan_shreg_x <= {{(10){x_reg[TAPS-1][15]}}, x_reg[TAPS-1]};   // Sign extended to 26 bits
+                    // scan_shreg_w <= w_reg[TAPS-1];
+                    for (i = TAPS-1; i > 0; i=i-1) begin
+                        x_reg_scan[i] <= x_reg_scan[i-1];
+                    end
+                    for (i = TAPS-1; i > 0; i=i-1) begin
+                        w_reg_scan[i] <= w_reg_scan[i-1];
+                    end
+                end else begin
+                    x_reg_scan[TAPS-1] <= {1'b0, x_reg_scan[TAPS-1][15:1]};
+                    w_reg_scan[TAPS-1] <= {1'b0, w_reg_scan[TAPS-1][25:1]};
+                end
+            end
         end
     end
 endmodule

@@ -2,7 +2,7 @@ module controller (
     input  wire                 clk,
     input  wire                 rst_n,
 
-    input  wire                 scan_en,
+    input  wire                 scan_freeze,
 
     input  wire                 init_done,            // initialization bits
     input  wire        [4:0]    prog_delay_sel,
@@ -63,7 +63,7 @@ module controller (
             u_buf <= 16'sd0;
             x_out <= 16'sd0;
             a_out <= 16'sd0;
-        end else if (!scan_en) begin
+        end else if (!scan_freeze) begin
             // Defaults     
             fir_go <= 1'b0;          
             controller_ready <= 1'b0;
